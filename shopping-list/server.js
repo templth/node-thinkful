@@ -11,6 +11,7 @@ Storage.prototype.add = function(name) {
     var item = {name: name, id: this.id};
     this.items.push(item);
     this.id += 1;
+    return this.id;
 };
 
 Storage.prototype.delete = function(id) {
@@ -22,6 +23,18 @@ Storage.prototype.delete = function(id) {
         }
     }
     return found_item;
+};
+
+Storage.prototype.edit = function(id, name) {
+    for(var i=0; i<this.items.length; i++){
+        if( this.items[i].id === parseInt(id) ){
+            this.items[i].name = name;
+            return this.items[i];
+        }
+    }
+    // We need to create a new item with the specified id
+    var new_id = this.add(name);
+    return this.items[new_id];
 };
 
 var storage = new Storage();
@@ -59,9 +72,9 @@ var server = http.createServer(function (req, res) {
             }
         });
     }
-    else if (req.method === 'DELETE' && req.url.match(/^\/items\//)) {
-        var id = req.url.split('/')[2];
-        var deleted_item = storage.delete(id);
+    else if ( req.method === 'DELETE' && req.url.match(/^\/items\//)) {
+        var delete_id = req.url.split('/')[2];
+        var deleted_item = storage.delete(delete_id);
 
         if( deleted_item ){
             res.statusCode = 202;
@@ -72,6 +85,28 @@ var server = http.createServer(function (req, res) {
             responseData = {'message': 'Item not found'};
             res.end(JSON.stringify(responseData));            
         }
+    }
+    else if (req.method === 'PUT' && req.url.match(/^\/items\//)) {
+
+        var update_id = req.url.split('/')[2];
+        var update_item = '';
+
+        req.on('data', function (chunk) {
+            update_item += chunk;
+        });
+        req.on('end', function () {
+            try {
+                update_item = JSON.parse(update_item);
+                var updated_item = storage.edit(update_item.id, update_item.name);
+                res.statusCode = 200;
+                res.end(JSON.stringify(updated_item));
+            }
+            catch(e) {
+                res.statusCode = 400;
+                responseData = {'message': 'Invalid JSON'};
+                res.end(JSON.stringify(responseData));
+            }
+        });
     }
     else {
         fileServer.serve(req, res);
