@@ -1,0 +1,17 @@
+{
+  "name": "spotify-recommend",
+  "version": "0.0.0",
+  "description": "Spotify recommendation service",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Spotify"
+  ],
+  "author": "Sebastian Yates",
+  "license": "None",
+  "dependencies": {
+    "node-static": "^0.7.6"
+  }
+}
