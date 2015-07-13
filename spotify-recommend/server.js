@@ -33,42 +33,11 @@ var getRelatedArtists = function(res, artist){
 
     relatedReq.on('end', function(relatedArtists){
         artist.related = relatedArtists.artists;
-
-        // Get the top tracks for each related artist
-        var relatedArtistsArray = [];
-        for(var i=0; i<relatedArtists.artists.length; i++){
-            relatedArtistsArray.push(relatedArtists.artists[i]);
-        }
-
-        var completed = 0;
-        var checkCompleted = function(){
-            if(completed === relatedArtists.artists.length){
-                res.statusCode = 200;
-                res.end(JSON.stringify(artist));
-            }
-        };
-
-        relatedArtistsArray.forEach(function(relatedArtist){
-            var tracksUrl = 'artists/' + relatedArtist.id + '/top-tracks';
-            var tracksReq = getFromApi(tracksUrl, {
-                country: 'US'
-            });
-
-            tracksReq.on('end', function(tracksItem){
-                relatedArtist.tracks = tracksItem.tracks;
-                artist.related.tracks = tracksItem.tracks;
-                // Need to check if we've completed request for all artists
-                completed += 1;
-                checkCompleted();
-
-            });
-
-            tracksReq.on('error', function(){
-                console.log('No top tracks found for' + artist.name);
-                res.statusCode = 404;
-                res.end();
-            });
-        });
+        //var relatedArtistsArray = [];
+        //for(var i=0; i<relatedArtists.artists.length; i++){
+         //   relatedArtistsArray.push(relatedArtists.artists[i]);
+        //}
+        getTopTracks(res, artist, relatedArtists.artists);
     });
 
     relatedReq.on('error', function() {
@@ -77,13 +46,40 @@ var getRelatedArtists = function(res, artist){
     });
 };
 
+var getTopTracks = function(res, artist, relatedArtists){
+    var completed = 0;
+    var checkCompleted = function(){
+        if(completed === relatedArtists.length){
+            res.statusCode = 200;
+            res.end(JSON.stringify(artist));
+        }
+    };
+
+    relatedArtists.forEach(function(relatedArtist){
+        var tracksUrl = 'artists/' + relatedArtist.id + '/top-tracks';
+        var tracksReq = getFromApi(tracksUrl, {
+            country: 'US'
+        });
+
+        tracksReq.on('end', function(tracksItem){
+            relatedArtist.tracks = tracksItem.tracks;
+            completed += 1;
+            checkCompleted();
+        });
+
+        tracksReq.on('error', function(){
+            console.log('No top tracks found for' + artist.name);
+            // Should we return any error here or simply not list tracks?
+        });
+    });
+};
 
 
 var fileServer = new static.Server('./public');
 var server = http.createServer(function(req, res) {
     res.setHeader('Content-Type', 'application/json');
     if (req.method == "GET" && req.url.indexOf('/search/') === 0) {
-        var name = req.url.split('/')[2];
+        var name = decodeURI(req.url.split('/')[2]);
         var searchReq = getFromApi('search', {
             q: name,
             limit: 1,
