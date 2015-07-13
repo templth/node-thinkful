@@ -27,13 +27,48 @@ var getFromApi = function(endpoint, args) {
 };
 
 var getRelatedArtists = function(res, artist){
-    var related_url = 'artists/' + artist.id + '/related-artists';
-    var relatedReq = getFromApi(related_url, {
+    var relatedUrl = 'artists/' + artist.id + '/related-artists';
+    var relatedReq = getFromApi(relatedUrl, {
     });     
 
-    relatedReq.on('end', function(related_item){
-        artist.related = related_item.artists;
-        res.end(JSON.stringify(artist));
+    relatedReq.on('end', function(relatedArtists){
+        artist.related = relatedArtists.artists;
+
+        // Get the top tracks for each related artist
+        var relatedArtistsArray = [];
+        for(var i=0; i<relatedArtists.artists.length; i++){
+            relatedArtistsArray.push(relatedArtists.artists[i]);
+        }
+
+        var completed = 0;
+        var checkCompleted = function(){
+            if(completed === relatedArtists.artists.length){
+                res.statusCode = 200;
+                res.end(JSON.stringify(artist));
+            }
+        };
+
+        relatedArtistsArray.forEach(function(relatedArtist){
+            var tracksUrl = 'artists/' + relatedArtist.id + '/top-tracks';
+            var tracksReq = getFromApi(tracksUrl, {
+                country: 'US'
+            });
+
+            tracksReq.on('end', function(tracksItem){
+                relatedArtist.tracks = tracksItem.tracks;
+                artist.related.tracks = tracksItem.tracks;
+                // Need to check if we've completed request for all artists
+                completed += 1;
+                checkCompleted();
+
+            });
+
+            tracksReq.on('error', function(){
+                console.log('No top tracks found for' + artist.name);
+                res.statusCode = 404;
+                res.end();
+            });
+        });
     });
 
     relatedReq.on('error', function() {
@@ -41,6 +76,7 @@ var getRelatedArtists = function(res, artist){
         res.end();
     });
 };
+
 
 
 var fileServer = new static.Server('./public');
